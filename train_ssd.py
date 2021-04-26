@@ -24,8 +24,8 @@ from loss_fn import MultiBoxLoss
 import visdom
 
 BaseDir = os.path.abspath(os.path.dirname(__file__))
-VOC_ROOT = os.path.join(BaseDir, "..", "VOC2007")
-Weight_Root = os.path.join(BaseDir, "..", "weight")
+VOC_ROOT = os.path.join(BaseDir, "VOCdevkit")
+Weight_Root = os.path.join(BaseDir, "weights")
 
 
 def str2bool(v):
@@ -98,10 +98,11 @@ def train_ssd():
     # load pretrained weights if possible
     if args.resume:
         print('Loading whole network...')
-        ssd_net.load_state_dict(args.resume)
+        state = torch.load(args.resume)
+        ssd_net.load_state_dict(state)
     else:
         # base_weights: my shuffle net with out fc layer
-        base_weights = torch.load(args.save_folder + args.basenet)
+        base_weights = torch.load(os.path.join(args.save_folder, args.basenet))
         base_fcreduced1 = base_weights.popitem(last=True)
         base_fcreduced2 = base_weights.popitem(last=True)
         print('Loading base network...')
@@ -110,7 +111,8 @@ def train_ssd():
     if not args.resume:
         print('Initializing weights...')
         # initialize newly added layers' weights with xavier method
-        ssd_net.extras.apply(weights_init)
+        for layer in ssd_net.extras:
+            layer.apply(weights_init)
         ssd_net.loc.apply(weights_init)
         ssd_net.conf.apply(weights_init)
 
@@ -150,7 +152,8 @@ def train_ssd():
         for i, (image, targets) in enumerate(dataloader):
             if args.cuda:
                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-                image, targets = image.to(device), targets.to(device)
+                image = image.to(device)
+                targets = [ann.to(device) for ann in targets]
             # forward
             t0 = time.time()
             output = net(image)
@@ -159,7 +162,7 @@ def train_ssd():
             optimizer.zero_grad()
             loss_l, loss_c = criterion(output, targets)
             loss = loss_c + loss_l
-            loss.backwards()
+            loss.backward()
             optimizer.step()
             t1 = time.time()
 

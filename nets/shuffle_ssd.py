@@ -53,12 +53,13 @@ def get_heads(cfg, extra_layers, num_classes):
 
 
 class S_SSD(nn.Module):
-    def __init__(self, phase, base, extras, head, num_classes):
+    def __init__(self, phase, size, base, extras, head, num_classes):
         super(S_SSD, self).__init__()
         self.phase = phase
         if self.phase != "test" and self.phase != "train":
             raise Exception("phase must be train or test, got {} instead".format(self.phase))
 
+        self.size = size
         self.loc = nn.ModuleList(head[0])
         self.conf = nn.ModuleList(head[1])
 
@@ -158,7 +159,7 @@ if __name__ == '__main__':
     # for i in range(len(head[1])):
     #     print(head[1][i])
     base_net = Shuffle_ssd([4, 8, 4])
-    net = S_SSD('train', base_net, extra_layers, head, 21)
+    net = S_SSD('train', 300, base_net, extra_layers, head, 21)
     print(net.base)
     # t = torch.rand(2, 3, 300, 300)
     # g = net(t)
